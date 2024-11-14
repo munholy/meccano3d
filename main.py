@@ -51,8 +51,23 @@ for i, stl_file in enumerate(stl_files):
     # Load STL file
     obj = bproc.loader.load_obj(stl_file)[0]
     # Scale object to reasonable size (adjust scale factor as needed)
-    rand_scale = 4.0 ** np.random.random()
-    obj.set_scale([0.001 * rand_scale * max(1,length_scale) * OBJ_SCALING] * 3)  # Convert mm to m
+
+    rand_scale = 3.0 ** np.random.random()
+
+    # 바운딩 박스 기반으로 크기 계산
+    bbox = obj.get_bound_box()
+    dims = np.ptp(bbox, axis=0)  # 각 축의 최대-최소 차이
+    longest_axis = max(np.max(dims), 0.00001)
+    size_thres = 20.0 * 5.0 ** np.random.random() # 20mm ~ 100mm
+    target_size = min(size_thres, longest_axis)
+        
+
+    size_scale = target_size / longest_axis
+
+    # 최종 스케일 적용
+    final_scale = 0.001 * rand_scale * max(1,length_scale) * OBJ_SCALING * size_scale
+    obj.set_scale([final_scale] * 3)
+    # obj.set_scale([0.001 * rand_scale * max(1,length_scale) * OBJ_SCALING] * 3)  # Convert mm to m
     
     # Set category_id for BOP format
     obj.set_cp("category_id", i + 1)  # BOP format requires category_id
@@ -79,11 +94,12 @@ for obj in loaded_objects:
 
 # Create room
 wall_pos = np.random.random(size = (8,)) + 2.0
-room_planes = [bproc.object.create_primitive('PLANE', scale=[3, 3, 1]),
-               bproc.object.create_primitive('PLANE', scale=[3, 3, 1], location=[0, -wall_pos[0], wall_pos[1]], rotation=[-1.570796, 0, 0]),
-               bproc.object.create_primitive('PLANE', scale=[3, 3, 1], location=[0, wall_pos[2], wall_pos[3]], rotation=[1.570796, 0, 0]),
-               bproc.object.create_primitive('PLANE', scale=[3, 3, 1], location=[wall_pos[4], 0, wall_pos[5]], rotation=[0, -1.570796, 0]),
-               bproc.object.create_primitive('PLANE', scale=[3, 3, 1], location=[-wall_pos[6], 0, wall_pos[7]], rotation=[0, 1.570796, 0])]
+wall_angle = np.random.uniform(low = -np.pi / 8, high = np.pi / 8, size = (8,))
+room_planes = [bproc.object.create_primitive('PLANE', scale=[5, 5, 1]),
+               bproc.object.create_primitive('PLANE', scale=[5, 5, 1], location=[0, -wall_pos[0], wall_pos[1]], rotation=[-1.570796, wall_angle[0],wall_angle[1]]),
+               bproc.object.create_primitive('PLANE', scale=[5, 5, 1], location=[0, wall_pos[2], wall_pos[3]], rotation=[1.570796, wall_angle[2],wall_angle[3]]),
+               bproc.object.create_primitive('PLANE', scale=[5, 5, 1], location=[wall_pos[4], 0, wall_pos[5]], rotation=[wall_angle[4], -1.570796, wall_angle[5]]),
+               bproc.object.create_primitive('PLANE', scale=[5, 5, 1], location=[-wall_pos[6], 0, wall_pos[7]], rotation=[wall_angle[6], 1.570796, wall_angle[7]])]
 
 for plane in room_planes:
     plane.enable_rigidbody(False, collision_shape='BOX', friction=100.0, linear_damping=0.99, angular_damping=0.99)
@@ -202,7 +218,7 @@ bproc.writer.write_bop(os.path.join(args.output_dir, 'bop_data'),
                       colors=data["colors"], 
                       color_file_format="JPEG",
                       depth_scale=0.1,  # Adjust this value based on your depth range
-                      jpg_quality=80,
+                      jpg_quality=90,
                       save_world2cam=True,  # Save camera poses
                       append_to_existing_output=True,
                       frames_per_chunk=1000,
