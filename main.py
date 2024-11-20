@@ -165,6 +165,13 @@ print(len(loaded_objects), 'filtered num')
 # BVH tree used for camera obstacle checks
 bvh_tree = bproc.object.create_bvh_tree_multi_objects(loaded_objects)
 
+image_width, image_height = 512,512
+if np.random.random() > 0.5:
+    image_width, image_height = 720,480
+if np.random.random() > 0.5:
+    image_width, image_height = 640,480
+
+bproc.camera.set_resolution(image_width=image_width, image_height=image_height)
 
 bproc.camera.set_intrinsics_from_blender_params(lens=field_of_view, lens_unit="FOV")
 
